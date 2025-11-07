@@ -1,0 +1,68 @@
+# Core Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Image Processing & Computer Vision
+opencv-python==4.9.0.80
+opencv-contrib-python==4.9.0.80
+Pillow==10.2.0
+scikit-image==0.22.0
+numpy==1.26.3
+scipy==1.11.4
+
+# Deep Learning (lightweight models)
+torch==2.1.2
+torchvision==0.16.2
+ultralytics==8.1.0  # YOLOv8
+
+# OCR
+pytesseract==0.3.10
+easyocr==1.7.0
+
+# PDF & CAD Processing
+PyPDF2==3.0.1
+pdf2image==1.17.0
+ezdxf==1.1.4
+pypdfium2==4.26.0
+
+# Geometry & Spatial Analysis
+shapely==2.0.2
+networkx==3.2.1
+matplotlib==3.8.2
+scikit-learn==1.4.0
+
+# Graph Analysis (Space Syntax)
+igraph==0.11.3
+python-igraph==0.11.3
+
+# Database
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+alembic==1.13.1
+
+# Utilities
+python-dotenv==1.0.0
+aiofiles==23.2.1
+httpx==0.26.0
+redis==5.0.1
+
+# Color Analysis
+colorgram.py==1.2.0
+colormath==3.0.0
+webcolors==1.13
+
+# Export & Reporting
+reportlab==4.0.9
+openpyxl==3.1.2
+pandas==2.1.4
+
+# CORS & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+
+# Monitoring & Logging
+loguru==0.7.2

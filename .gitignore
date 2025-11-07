@@ -1,0 +1,93 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Models & Weights
+models/*.pth
+models/*.pt
+models/*.h5
+models/*.onnx
+
+# Data
+data/uploads/*
+data/outputs/*
+data/cache/*
+!data/uploads/.gitkeep
+!data/outputs/.gitkeep
+!data/cache/.gitkeep
+
+# Environment
+.env
+.env.local
+.dev.vars
+*.key
+*.pem
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Node (for frontend)
+node_modules/
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Backup
+*.backup
+*.bak
+*.tar.gz
+*.zip

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محلل مخططات الطوابق - Floor Plan Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+        body { font-family: 'Cairo', sans-serif; }
+        .color-swatch { width: 40px; height: 40px; border-radius: 50%; display: inline-block; border: 2px solid #e5e7eb; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4 space-x-reverse">
+                    <i class="fas fa-building text-4xl"></i>
+                    <div>
+                        <h1 class="text-3xl font-bold">محلل مخططات الطوابق</h1>
+                        <p class="text-blue-100">Floor Plan Analyzer - تحليل ذكي للمخططات المعمارية</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-4 py-8">
+        <!-- Upload Section -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-upload text-blue-600 ml-2"></i>
+                رفع المخطط للتحليل
+            </h2>
+            
+            <form id="uploadForm" class="space-y-4">
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition">
+                    <i class="fas fa-cloud-upload-alt text-6xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-600 mb-2">اسحب الملف هنا أو انقر للاختيار</p>
+                    <p class="text-sm text-gray-500">PDF, PNG, JPG (حتى 50MB)</p>
+                    <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg" class="hidden">
+                    <button type="button" onclick="document.getElementById('fileInput').click()" 
+                            class="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                        اختر ملف
+                    </button>
+                    <div id="fileName" class="mt-4 text-sm text-gray-600"></div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">مقياس الرسم</label>
+                        <input type="number" id="scale" placeholder="100 (لـ 1/100)" 
+                               class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">وحدة القياس</label>
+                        <select id="unit" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="meters">متر</option>
+                            <option value="feet">قدم</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">نوع المبنى</label>
+                        <select id="buildingType" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="hospital">مستشفى</option>
+                            <option value="office">مكتب</option>
+                            <option value="residential">سكني</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center">
+                    <input type="checkbox" id="colorAnalysis" checked class="ml-2 h-4 w-4 text-blue-600">
+                    <label for="colorAnalysis" class="text-sm font-medium text-gray-700">
+                        <i class="fas fa-palette ml-1"></i>
+                        تفعيل التحليل اللوني المتقدم
+                    </label>
+                </div>
+
+                <button type="submit" class="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-bold text-lg">
+                    <i class="fas fa-chart-bar ml-2"></i>
+                    بدء التحليل
+                </button>
+            </form>
+        </div>
+
+        <!-- Progress Section -->
+        <div id="progressSection" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-spinner fa-spin text-blue-600 ml-2"></i>
+                جاري التحليل...
+            </h2>
+            <div class="relative pt-1">
+                <div class="flex mb-2 items-center justify-between">
+                    <div>
+                        <span id="progressText" class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-600 bg-blue-200">
+                            المعالجة
+                        </span>
+                    </div>
+                    <div class="text-right">
+                        <span id="progressPercent" class="text-xs font-semibold inline-block text-blue-600">
+                            0%
+                        </span>
+                    </div>
+                </div>
+                <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200">
+                    <div id="progressBar" style="width:0%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-600 transition-all duration-500"></div>
+                </div>
+                <p id="statusMessage" class="text-sm text-gray-600"></p>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" class="hidden">
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-600 text-sm">إجمالي المساحة</p>
+                            <p id="gfaValue" class="text-3xl font-bold text-blue-600">-</p>
+                        </div>
+                        <i class="fas fa-ruler-combined text-4xl text-blue-300"></i>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-600 text-sm">الكفاءة</p>
+                            <p id="efficiencyValue" class="text-3xl font-bold text-green-600">-</p>
+                        </div>
+                        <i class="fas fa-percentage text-4xl text-green-300"></i>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-600 text-sm">عدد الغرف</p>
+                            <p id="roomsValue" class="text-3xl font-bold text-purple-600">-</p>
+                        </div>
+                        <i class="fas fa-door-open text-4xl text-purple-300"></i>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-600 text-sm">درجة الامتثال</p>
+                            <p id="complianceValue" class="text-3xl font-bold text-orange-600">-</p>
+                        </div>
+                        <i class="fas fa-check-circle text-4xl text-orange-300"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">
+                        <i class="fas fa-chart-pie text-blue-600 ml-2"></i>
+                        توزيع المساحات
+                    </h3>
+                    <canvas id="areaChart"></canvas>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">
+                        <i class="fas fa-chart-bar text-green-600 ml-2"></i>
+                        نتائج الامتثال
+                    </h3>
+                    <canvas id="complianceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Color Analysis -->
+            <div id="colorAnalysisSection" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">
+                    <i class="fas fa-palette text-pink-600 ml-2"></i>
+                    التحليل اللوني المتقدم
+                </h3>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="font-bold text-gray-700 mb-3">الألوان السائدة</h4>
+                        <div id="dominantColors" class="space-y-2"></div>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-gray-700 mb-3">الإحصائيات اللونية</h4>
+                        <div id="colorStats" class="space-y-2"></div>
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <h4 class="font-bold text-gray-700 mb-3">التوصيات</h4>
+                    <div id="colorRecommendations" class="space-y-2"></div>
+                </div>
+            </div>
+
+            <!-- Detailed Results -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">
+                    <i class="fas fa-info-circle text-indigo-600 ml-2"></i>
+                    النتائج التفصيلية
+                </h3>
+                <pre id="detailedResults" class="bg-gray-50 p-4 rounded-lg text-sm overflow-auto max-h-96 text-left" dir="ltr"></pre>
+                <div class="mt-4 flex gap-4">
+                    <button onclick="downloadJSON()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-download ml-1"></i>
+                        تحميل JSON
+                    </button>
+                    <button onclick="downloadPDF()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">
+                        <i class="fas fa-file-pdf ml-1"></i>
+                        تحميل PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-gray-800 text-white py-6 mt-12">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-gray-300">محلل مخططات الطوابق © 2024</p>
+            <p class="text-gray-400 text-sm mt-2">Floor Plan Analyzer - Powered by AI</p>
+        </div>
+    </footer>
+
+    <script>
+        const API_URL = window.location.origin;
+        let currentJobId = null;
+        let currentResult = null;
+        let pollInterval = null;
+
+        // File input change handler
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('fileName').textContent = `تم اختيار: ${file.name}`;
+            }
+        });
+
+        // Form submission
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('الرجاء اختيار ملف');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('scale', document.getElementById('scale').value || '100');
+            formData.append('unit', document.getElementById('unit').value);
+            formData.append('building_type', document.getElementById('buildingType').value);
+            formData.append('enable_color_analysis', document.getElementById('colorAnalysis').checked);
+
+            try {
+                document.getElementById('progressSection').classList.remove('hidden');
+                document.getElementById('resultsSection').classList.add('hidden');
+                
+                updateProgress(10, 'جاري رفع الملف...');
+
+                const response = await axios.post(`${API_URL}/api/analyze`, formData, {
+                    headers: {'Content-Type': 'multipart/form-data'}
+                });
+
+                currentJobId = response.data.job_id;
+                updateProgress(20, 'تم الرفع بنجاح، جاري التحليل...');
+                
+                // Start polling for status
+                pollJobStatus();
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('خطأ في رفع الملف: ' + (error.response?.data?.detail || error.message));
+                document.getElementById('progressSection').classList.add('hidden');
+            }
+        });
+
+        async function pollJobStatus() {
+            if (pollInterval) clearInterval(pollInterval);
+            
+            pollInterval = setInterval(async () => {
+                try {
+                    const response = await axios.get(`${API_URL}/api/status/${currentJobId}`);
+                    const status = response.data;
+                    
+                    updateProgress(status.progress, status.message);
+                    
+                    if (status.status === 'completed') {
+                        clearInterval(pollInterval);
+                        currentResult = status.result;
+                        displayResults(status.result);
+                    } else if (status.status === 'failed') {
+                        clearInterval(pollInterval);
+                        alert('فشل التحليل: ' + status.message);
+                        document.getElementById('progressSection').classList.add('hidden');
+                    }
+                } catch (error) {
+                    console.error('Error polling status:', error);
+                }
+            }, 2000);
+        }
+
+        function updateProgress(percent, message) {
+            document.getElementById('progressBar').style.width = percent + '%';
+            document.getElementById('progressPercent').textContent = percent + '%';
+            document.getElementById('statusMessage').textContent = message;
+        }
+
+        function displayResults(result) {
+            document.getElementById('progressSection').classList.add('hidden');
+            document.getElementById('resultsSection').classList.remove('hidden');
+            
+            // Update summary cards
+            const metrics = result.metrics || {};
+            document.getElementById('gfaValue').textContent = (metrics.gfa || 0).toFixed(1) + ' m²';
+            document.getElementById('efficiencyValue').textContent = ((metrics.efficiency || 0) * 100).toFixed(1) + '%';
+            document.getElementById('roomsValue').textContent = metrics.total_rooms || 0;
+            
+            const compliance = result.compliance || {};
+            document.getElementById('complianceValue').textContent = (compliance.overall_score || 0).toFixed(1) + '%';
+            
+            // Create charts
+            createAreaChart(metrics);
+            createComplianceChart(compliance);
+            
+            // Display color analysis
+            if (result.color_analysis) {
+                displayColorAnalysis(result.color_analysis);
+            }
+            
+            // Display detailed results
+            document.getElementById('detailedResults').textContent = JSON.stringify(result, null, 2);
+        }
+
+        function createAreaChart(metrics) {
+            const ctx = document.getElementById('areaChart');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['الغرف', 'الممرات', 'خدمات'],
+                    datasets: [{
+                        data: [
+                            metrics.total_room_area || 0,
+                            metrics.total_corridor_area || 0,
+                            (metrics.gfa || 0) - (metrics.total_room_area || 0) - (metrics.total_corridor_area || 0)
+                        ],
+                        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B']
+                    }]
+                },
+                options: {responsive: true, maintainAspectRatio: true}
+            });
+        }
+
+        function createComplianceChart(compliance) {
+            const ctx = document.getElementById('complianceChart');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['مطابق', 'غير مطابق', 'حرج'],
+                    datasets: [{
+                        label: 'عدد الفحوصات',
+                        data: [
+                            compliance.passed || 0,
+                            compliance.failed || 0,
+                            compliance.critical_issues || 0
+                        ],
+                        backgroundColor: ['#10B981', '#F59E0B', '#EF4444']
+                    }]
+                },
+                options: {responsive: true, maintainAspectRatio: true}
+            });
+        }
+
+        function displayColorAnalysis(colorAnalysis) {
+            document.getElementById('colorAnalysisSection').classList.remove('hidden');
+            
+            // Dominant colors
+            const dominantDiv = document.getElementById('dominantColors');
+            dominantDiv.innerHTML = '';
+            (colorAnalysis.dominant_colors || []).forEach(color => {
+                dominantDiv.innerHTML += `
+                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <div class="flex items-center gap-3">
+                            <span class="color-swatch" style="background-color: ${color.hex}"></span>
+                            <div>
+                                <span class="font-bold">${color.name}</span>
+                                <span class="text-sm text-gray-600 mr-2">${color.hex}</span>
+                            </div>
+                        </div>
+                        <span class="text-sm font-bold">${color.percentage.toFixed(1)}%</span>
+                    </div>
+                `;
+            });
+            
+            // Statistics
+            const stats = colorAnalysis.statistics || {};
+            const statsDiv = document.getElementById('colorStats');
+            statsDiv.innerHTML = `
+                <div class="p-2 bg-gray-50 rounded">
+                    <span class="font-bold">متوسط السطوع:</span>
+                    <span class="text-gray-700">${(stats.brightness_avg || 0).toFixed(1)}</span>
+                </div>
+                <div class="p-2 bg-gray-50 rounded">
+                    <span class="font-bold">نسبة التباين:</span>
+                    <span class="text-gray-700">${(stats.contrast_ratio || 0).toFixed(2)}</span>
+                </div>
+                <div class="p-2 bg-gray-50 rounded">
+                    <span class="font-bold">درجة الحرارة:</span>
+                    <span class="text-gray-700">${stats.temperature || 'محايد'}</span>
+                </div>
+            `;
+            
+            // Recommendations
+            const recsDiv = document.getElementById('colorRecommendations');
+            recsDiv.innerHTML = '';
+            (colorAnalysis.recommendations || []).forEach(rec => {
+                recsDiv.innerHTML += `
+                    <div class="flex items-start gap-2 p-2 bg-blue-50 rounded">
+                        <i class="fas fa-lightbulb text-blue-600 mt-1"></i>
+                        <span class="text-sm">${rec}</span>
+                    </div>
+                `;
+            });
+        }
+
+        function downloadJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentResult, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", `floor_plan_analysis_${currentJobId}.json`);
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        async function downloadPDF() {
+            try {
+                const response = await axios.get(`${API_URL}/api/report/${currentJobId}?format=pdf`, {
+                    responseType: 'blob'
+                });
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `floor_plan_report_${currentJobId}.pdf`);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+            } catch (error) {
+                alert('تقرير PDF غير متوفر حالياً');
+            }
+        }
+    </script>
+</body>
+</html>
