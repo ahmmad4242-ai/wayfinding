@@ -29,7 +29,7 @@ from src.api.models import (
 
 # Advanced Wayfinding Analysis Modules
 from src.wayfinding.space_syntax import SpaceSyntaxAnalyzer
-from src.wayfinding.vga_isovists import VGAIsovistsAnalyzer
+from src.wayfinding.vga_isovists import VisibilityAnalyzer as VGAAnalyzer
 from src.wayfinding.agent_simulation import AgentSimulator
 from src.wayfinding.signage_analyzer import SignageAnalyzer
 from src.wayfinding.wes_calculator import WESCalculator
@@ -356,7 +356,7 @@ async def process_floor_plan(
         
         vga_results = None
         try:
-            vga_analyzer = VGAIsovistsAnalyzer()
+            vga_analyzer = VGAAnalyzer()
             vga_results = await vga_analyzer.analyze(
                 floor_plan_image=processed_image,
                 walls=elements.get('walls', []),
