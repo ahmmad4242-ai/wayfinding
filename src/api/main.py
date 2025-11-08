@@ -27,6 +27,15 @@ from src.api.models import (
     HealthResponse
 )
 
+# Advanced Wayfinding Analysis Modules
+from src.wayfinding.space_syntax import SpaceSyntaxAnalyzer
+from src.wayfinding.vga_isovists import VGAIsovistsAnalyzer
+from src.wayfinding.agent_simulation import AgentSimulator
+from src.wayfinding.signage_analyzer import SignageAnalyzer
+from src.wayfinding.wes_calculator import WESCalculator
+from src.visualization.heatmap_generator import HeatmapGenerator
+from src.analysis.recommendation_engine import RecommendationEngine
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Floor Plan Analyzer API",
@@ -309,10 +318,10 @@ async def process_floor_plan(
         metrics_calc = MetricsCalculator()
         metrics = await metrics_calc.calculate(areas, elements)
         
-        # 5. Wayfinding Analysis
+        # 5. Basic Wayfinding Analysis
         jobs_storage[job_id].update({
-            "progress": 70,
-            "message": "تحليل التوجيه والمسارات..."
+            "progress": 50,
+            "message": "تحليل التوجيه والمسارات الأساسي..."
         })
         
         pathfinder = PathFinder()
@@ -321,34 +330,189 @@ async def process_floor_plan(
         visibility = VisibilityAnalyzer()
         visibility_data = await visibility.analyze(elements)
         
-        # 6. Compliance Check
+        # 6. Advanced Space Syntax Analysis
+        jobs_storage[job_id].update({
+            "progress": 55,
+            "message": "تحليل Space Syntax (Hillier)..."
+        })
+        
+        space_syntax_results = None
+        try:
+            if hasattr(wayfinding, 'graph') and wayfinding.graph:
+                space_syntax = SpaceSyntaxAnalyzer()
+                space_syntax_results = await space_syntax.analyze(
+                    wayfinding.graph, 
+                    weighted=True
+                )
+                logger.info("✅ Space Syntax analysis completed")
+        except Exception as e:
+            logger.warning(f"⚠️ Space Syntax analysis failed: {str(e)}")
+        
+        # 7. VGA & Isovists Analysis
+        jobs_storage[job_id].update({
+            "progress": 62,
+            "message": "تحليل VGA و Isovists (Benedikt/Turner)..."
+        })
+        
+        vga_results = None
+        try:
+            vga_analyzer = VGAIsovistsAnalyzer()
+            vga_results = await vga_analyzer.analyze(
+                floor_plan_image=processed_image,
+                walls=elements.get('walls', []),
+                scale_px_per_meter=scale if scale else 50.0
+            )
+            logger.info("✅ VGA & Isovists analysis completed")
+        except Exception as e:
+            logger.warning(f"⚠️ VGA analysis failed: {str(e)}")
+        
+        # 8. Signage Analysis
+        jobs_storage[job_id].update({
+            "progress": 68,
+            "message": "تحليل اللافتات والإرشادات..."
+        })
+        
+        signage_results = None
+        try:
+            # Extract signage nodes from elements (placeholder - should be detected)
+            signage_nodes = elements.get('signage', [])
+            landmark_nodes = elements.get('landmarks', [])
+            
+            signage_analyzer = SignageAnalyzer()
+            signage_results = await signage_analyzer.analyze(
+                graph=wayfinding.graph if hasattr(wayfinding, 'graph') else None,
+                signage_elements=signage_nodes,
+                landmarks=landmark_nodes,
+                vga_results=vga_results
+            )
+            logger.info("✅ Signage analysis completed")
+        except Exception as e:
+            logger.warning(f"⚠️ Signage analysis failed: {str(e)}")
+        
+        # 9. Agent-Based Simulation
+        jobs_storage[job_id].update({
+            "progress": 74,
+            "message": "محاكاة عوامل التنقل (Agent Simulation)..."
+        })
+        
+        simulation_results = None
+        try:
+            # Define hospital scenarios
+            scenarios = [
+                {
+                    "name": "entrance_to_emergency",
+                    "description": "من المدخل الرئيسي إلى قسم الطوارئ",
+                    "start": "entrance",
+                    "destination": "emergency"
+                },
+                {
+                    "name": "entrance_to_reception",
+                    "description": "من المدخل إلى الاستقبال",
+                    "start": "entrance",
+                    "destination": "reception"
+                }
+            ]
+            
+            agent_simulator = AgentSimulator()
+            simulation_results = await agent_simulator.simulate(
+                graph=wayfinding.graph if hasattr(wayfinding, 'graph') else None,
+                scenarios=scenarios,
+                signage_nodes=signage_nodes,
+                landmark_nodes=landmark_nodes,
+                n_agents_per_scenario=50  # Reduced for performance
+            )
+            logger.info("✅ Agent simulation completed")
+        except Exception as e:
+            logger.warning(f"⚠️ Agent simulation failed: {str(e)}")
+        
+        # 10. WES Score Calculation
         jobs_storage[job_id].update({
             "progress": 80,
+            "message": "حساب درجة كفاءة Wayfinding (WES)..."
+        })
+        
+        wes_results = None
+        try:
+            wes_calculator = WESCalculator()
+            wes_results = await wes_calculator.calculate_wes(
+                space_syntax_results=space_syntax_results,
+                vga_results=vga_results,
+                signage_results=signage_results,
+                simulation_results=simulation_results
+            )
+            logger.info(f"✅ WES Score calculated: {wes_results.get('wes_score', 0):.1f}/100")
+        except Exception as e:
+            logger.warning(f"⚠️ WES calculation failed: {str(e)}")
+        
+        # 11. Heatmap Generation
+        jobs_storage[job_id].update({
+            "progress": 85,
+            "message": "توليد الخرائط الحرارية..."
+        })
+        
+        heatmaps = None
+        try:
+            heatmap_gen = HeatmapGenerator()
+            heatmaps = await heatmap_gen.generate_all_heatmaps(
+                floor_plan_image=processed_image,
+                space_syntax_results=space_syntax_results,
+                vga_results=vga_results,
+                simulation_results=simulation_results,
+                output_dir=settings.output_dir / job_id
+            )
+            logger.info("✅ Heatmaps generated")
+        except Exception as e:
+            logger.warning(f"⚠️ Heatmap generation failed: {str(e)}")
+        
+        # 12. Recommendations Generation
+        jobs_storage[job_id].update({
+            "progress": 90,
+            "message": "توليد التوصيات المبنية على البحث العلمي..."
+        })
+        
+        recommendations = None
+        try:
+            rec_engine = RecommendationEngine()
+            recommendations = await rec_engine.generate_recommendations(
+                space_syntax_results=space_syntax_results,
+                vga_results=vga_results,
+                signage_results=signage_results,
+                simulation_results=simulation_results,
+                wes_results=wes_results
+            )
+            logger.info(f"✅ Generated {len(recommendations.get('recommendations', []))} recommendations")
+        except Exception as e:
+            logger.warning(f"⚠️ Recommendation generation failed: {str(e)}")
+        
+        # 13. Compliance Check
+        jobs_storage[job_id].update({
+            "progress": 93,
             "message": "فحص الامتثال للكود..."
         })
         
         checker = CodeChecker(building_type)
         compliance = await checker.check(elements, areas, metrics)
         
-        # 7. Color Analysis (if enabled)
+        # 14. Color Analysis (if enabled)
         color_data = None
         if enable_color_analysis:
             jobs_storage[job_id].update({
-                "progress": 90,
-                "message": "تحليل الألوان والمخطط الحراري..."
+                "progress": 96,
+                "message": "تحليل الألوان..."
             })
             
             color_extractor = ColorExtractor()
             color_data = await color_extractor.extract(processed_image)
         
-        # Compile results
+        # Compile comprehensive results
         result = {
             "job_id": job_id,
             "metadata": {
                 "filename": jobs_storage[job_id]["filename"],
                 "scale": scale,
                 "unit": unit,
-                "building_type": building_type
+                "building_type": building_type,
+                "analysis_version": "2.0.0-academic"
             },
             "elements": elements,
             "areas": areas,
@@ -356,7 +520,18 @@ async def process_floor_plan(
             "wayfinding": wayfinding,
             "visibility": visibility_data,
             "compliance": compliance,
-            "color_analysis": color_data
+            "color_analysis": color_data,
+            
+            # Advanced Academic Analysis Results
+            "academic_analysis": {
+                "space_syntax": space_syntax_results,
+                "vga_isovists": vga_results,
+                "signage_evaluation": signage_results,
+                "agent_simulation": simulation_results,
+                "wes_score": wes_results,
+                "heatmaps": heatmaps,
+                "recommendations": recommendations
+            }
         }
         
         # Update job status
